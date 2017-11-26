@@ -1,5 +1,6 @@
 package com.finalproject.lu.server;
 
+import POJO.FoodsEnum;
 import POJO.Message;
 import POJO.Nodification;
 import POJO.Order;
@@ -235,7 +236,8 @@ public class MainActivity extends Activity {
                     }
                     else if ((res = InventoryListThread.isPartialAvailable(message)) != null){
                         Order order = message.getOrder();
-                        Message reply = new Message(order, new Nodification(Nodification.Status.PARTIAL.getStatus()), false, null);
+                        // TODO handle partial order
+                        Message reply = new Message(order, new Nodification(Nodification.Status.PARTIAL.getStatus()), false, res);
                         oos.writeObject(reply);
                         oos.flush();
                     }
@@ -285,8 +287,8 @@ public class MainActivity extends Activity {
         }
         // TODO update from inventory.txt
         private void updateList() {
-            for (String key : inventoryList.keySet()){
-                inventoryList.put(key, inventoryList.getOrDefault(key, 0) + 50);
+            for (FoodsEnum key : FoodsEnum.values()){
+                inventoryList.put(key.getName(), inventoryList.getOrDefault(key.getName(), 0) + 50);
             }
         }
 
