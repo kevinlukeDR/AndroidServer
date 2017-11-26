@@ -8,6 +8,7 @@ import android.widget.TextView;
 
 import java.io.*;
 import java.net.*;
+import java.util.Calendar;
 import java.util.Enumeration;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
+    private final static Calendar date = Calendar.getInstance();
     TextView info, infoip, msg;
     String message = "";
     ServerSocket serverSocket;
@@ -81,6 +83,13 @@ public class MainActivity extends Activity {
                 ExecutorService listenPool = Executors.newCachedThreadPool();
                 while (true) {
                     Socket socket = serverSocket.accept();
+                    int currentHour = date.get(Calendar.HOUR_OF_DAY);
+                    // TODO remove comment
+//                    if (currentHour > 19 || currentHour < 11){
+//                        replyPool.execute(new SocketServerReplyThread(
+//                                socket, count, false));
+//                        continue;
+//                    }
                     count++;
                     message += "#" + count + " from " + socket.getInetAddress()
                             + ":" + socket.getPort() + "\n";
@@ -94,7 +103,7 @@ public class MainActivity extends Activity {
                     });
 
                     replyPool.execute(new SocketServerReplyThread(
-                            socket, count));
+                            socket, count, true));
                     listenPool.execute(new SocketServerListenThread(socket, count));
                     System.out.println("123");
                 }
@@ -107,12 +116,14 @@ public class MainActivity extends Activity {
     }
     private class SocketServerReplyThread extends Thread {
 
-        private Socket hostThreadSocket;
+        Socket hostThreadSocket;
         int cnt;
+        boolean isOpen;
 
-        SocketServerReplyThread(Socket socket, int c) {
+        SocketServerReplyThread(Socket socket, int c, boolean isOpen) {
             hostThreadSocket = socket;
             cnt = c;
+            this.isOpen = isOpen;
         }
 
         @Override
@@ -121,19 +132,27 @@ public class MainActivity extends Activity {
             String msgReply = "Hello from Android, you are #" + cnt;
 
             try {
-                outputStream = hostThreadSocket.getOutputStream();
-                PrintStream printStream = new PrintStream(outputStream);
-                printStream.print(msgReply);
+                if (!isOpen){
+                    outputStream = hostThreadSocket.getOutputStream();
+                    PrintStream printStream = new PrintStream(outputStream);
+                    printStream.print("Closed Now!");
+                    printStream.close();
+                }
+                else {
+                    outputStream = hostThreadSocket.getOutputStream();
+                    PrintStream printStream = new PrintStream(outputStream);
+                    printStream.print(msgReply);
 
-                message += "replayed: " + msgReply + "\n";
+                    message += "replayed: " + msgReply + "\n";
 
-                MainActivity.this.runOnUiThread(new Runnable() {
+                    MainActivity.this.runOnUiThread(new Runnable() {
 
-                    @Override
-                    public void run() {
-                        msg.setText(message);
-                    }
-                });
+                        @Override
+                        public void run() {
+                            msg.setText(message);
+                        }
+                    });
+                }
 
             } catch (IOException e) {
                 // TODO Auto-generated catch block
