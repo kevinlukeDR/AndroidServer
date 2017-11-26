@@ -1,6 +1,8 @@
 package com.finalproject.lu.server;
 
 import POJO.Message;
+import POJO.Nodification;
+import POJO.Order;
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -8,8 +10,7 @@ import android.widget.TextView;
 
 import java.io.*;
 import java.net.*;
-import java.util.Calendar;
-import java.util.Enumeration;
+import java.util.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -20,6 +21,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Enumeration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -30,6 +33,8 @@ import android.widget.TextView;
 public class MainActivity extends Activity {
 
     private final static Calendar date = Calendar.getInstance();
+    private static ConcurrentLinkedQueue<Message> orderList = new ConcurrentLinkedQueue<>();
+    private static ConcurrentHashMap<String, Integer> inventoryList = new ConcurrentHashMap<>();
     TextView info, infoip, msg;
     String message = "";
     ServerSocket serverSocket;
@@ -41,8 +46,11 @@ public class MainActivity extends Activity {
         info = (TextView) findViewById(R.id.info);
         infoip = (TextView) findViewById(R.id.infoip);
         msg = (TextView) findViewById(R.id.msg);
-
         infoip.setText(getIpAddress());
+
+
+        InventoryListThread inventoryListThread = new InventoryListThread();
+        inventoryListThread.start();
 
         Thread socketServerThread = new Thread(new SocketServerThread());
         socketServerThread.start();
@@ -108,7 +116,6 @@ public class MainActivity extends Activity {
                     System.out.println("123");
                 }
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
@@ -132,16 +139,15 @@ public class MainActivity extends Activity {
             String msgReply = "Hello from Android, you are #" + cnt;
 
             try {
+                ObjectOutputStream oos = new ObjectOutputStream(hostThreadSocket.getOutputStream());;
                 if (!isOpen){
-                    outputStream = hostThreadSocket.getOutputStream();
-                    PrintStream printStream = new PrintStream(outputStream);
-                    printStream.print("Closed Now!");
-                    printStream.close();
+                    oos.writeObject("Closed Now!");
+                    oos.flush();
+                    oos.close();
                 }
                 else {
-                    outputStream = hostThreadSocket.getOutputStream();
-                    PrintStream printStream = new PrintStream(outputStream);
-                    printStream.print(msgReply);
+                    oos.writeObject(cnt);
+                    oos.flush();
 
                     message += "replayed: " + msgReply + "\n";
 
@@ -155,7 +161,6 @@ public class MainActivity extends Activity {
                 }
 
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 message += "Something wrong! " + e.toString() + "\n";
             }
@@ -194,7 +199,6 @@ public class MainActivity extends Activity {
             }
 
         } catch (SocketException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
             ip += "Something Wrong! " + e.toString() + "\n";
         }
@@ -215,19 +219,38 @@ public class MainActivity extends Activity {
         public void run() {
             while(true) {
                 try {
+                    ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());;
                     response = "";
                     InputStream is = socket.getInputStream();
                     ObjectInputStream ois = new ObjectInputStream(is);
                     Object object = ois.readObject();
                     Message message = (Message) object;
+                    Map<String, Boolean> res = new HashMap<>();
+                    if (InventoryListThread.isFullyAvailable(message)){
+                        orderList.offer(message);
+                        Order order = message.getOrder();
+                        Message reply = new Message(order, new Nodification(Nodification.Status.RECEIVE.getStatus()), false, null);
+                        oos.writeObject(reply);
+                        oos.flush();
+                    }
+                    else if ((res = InventoryListThread.isPartialAvailable(message)) != null){
+                        Order order = message.getOrder();
+                        Message reply = new Message(order, new Nodification(Nodification.Status.PARTIAL.getStatus()), false, null);
+                        oos.writeObject(reply);
+                        oos.flush();
+                    }
+                    else {
+                        Order order = message.getOrder();
+                        Message reply = new Message(order, new Nodification(Nodification.Status.NOTAVAILABLE.getStatus()), false, null);
+                        oos.writeObject(reply);
+                        oos.flush();
+                    }
                     response = message.getNodification().getNodification();
 
                 } catch (UnknownHostException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                     response = "UnknownHostException: " + e.toString();
                 } catch (IOException e) {
-                    // TODO Auto-generated catch block
                     e.printStackTrace();
                     response = "IOException: " + e.toString();
                 } catch (ClassNotFoundException e) {
@@ -245,6 +268,50 @@ public class MainActivity extends Activity {
                     }
                 }
             }
+        }
+    }
+
+    private static class InventoryListThread extends Thread {
+        @Override
+        public void run(){
+            while (true){
+                updateList();
+                try {
+                    Thread.sleep(86400);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        // TODO update from inventory.txt
+        private void updateList() {
+            for (String key : inventoryList.keySet()){
+                inventoryList.put(key, inventoryList.getOrDefault(key, 0) + 50);
+            }
+        }
+
+        // TODO find a way to make it synchronized
+        private static boolean isFullyAvailable(Message message) {
+            Map<String, Integer> foods = message.getOrder().getFoods();
+            for (String item : foods.keySet()){
+                if (foods.get(item) > inventoryList.get(item)){
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public static Map<String, Boolean> isPartialAvailable(Message message) {
+            Map<String, Integer> foods = message.getOrder().getFoods();
+            Map<String, Boolean> res = new HashMap<>();
+            int count = 0;
+            for (String item : foods.keySet()){
+                if (foods.get(item) <= inventoryList.get(item)){
+                    res.put(item, true);
+                    count++;
+                }
+            }
+            return count == 0 ? null : res;
         }
     }
 }
