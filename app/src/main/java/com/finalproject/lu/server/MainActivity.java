@@ -31,10 +31,15 @@ import android.os.Bundle;
 import android.app.Activity;
 import android.widget.TextView;
 
+import com.finalproject.lu.server.StaticThreads.KitchenThread;
+import com.finalproject.lu.server.StaticThreads.PackagingThread;
+
 public class MainActivity extends Activity {
 
     private final static Calendar date = Calendar.getInstance();
     private static ConcurrentLinkedQueue<Message> orderList = new ConcurrentLinkedQueue<>();
+    private static ConcurrentLinkedQueue<Message> packetList = new ConcurrentLinkedQueue<>();
+    private static ConcurrentLinkedQueue<Message> deliveryList = new ConcurrentLinkedQueue<>();
     private static ConcurrentHashMap<String, Integer> inventoryList = new ConcurrentHashMap<>();
     TextView info, infoip, msg;
     String message = "";
@@ -51,9 +56,12 @@ public class MainActivity extends Activity {
 
 
         InventoryListThread inventoryListThread = new InventoryListThread();
-        inventoryListThread.start();
-
         Thread socketServerThread = new Thread(new SocketServerThread());
+        PackagingThread packagingThread = new PackagingThread(packetList, deliveryList);
+        KitchenThread kitchenThread = new KitchenThread(orderList, packetList);
+        inventoryListThread.start();
+        kitchenThread.start();
+        packagingThread.start();
         socketServerThread.start();
     }
 
@@ -92,6 +100,8 @@ public class MainActivity extends Activity {
                 ExecutorService listenPool = Executors.newCachedThreadPool();
                 while (true) {
                     Socket socket = serverSocket.accept();
+                    PackagingThread.setSocket(socket);
+                    KitchenThread.setSocket(socket);
                     int currentHour = date.get(Calendar.HOUR_OF_DAY);
                     // TODO remove comment
 //                    if (currentHour > 19 || currentHour < 11){
