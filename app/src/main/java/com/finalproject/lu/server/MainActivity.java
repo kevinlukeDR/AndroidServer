@@ -49,12 +49,13 @@ public class MainActivity extends Activity {
         msg = (TextView) findViewById(R.id.msg);
         infoip.setText(getIpAddress());
 
-
+        loadInventory();
         InventoryListThread inventoryListThread = new InventoryListThread();
         inventoryListThread.start();
 
         Thread socketServerThread = new Thread(new SocketServerThread());
         socketServerThread.start();
+
     }
 
     @Override
@@ -68,6 +69,24 @@ public class MainActivity extends Activity {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
             }
+        }
+    }
+
+    public void loadInventory(){
+        File infile= new File("Inventory.txt");
+        String line="";
+        try {
+            BufferedReader br =new BufferedReader(new FileReader(infile));
+            while((line=br.readLine())!=null){
+                String items[]= line.split(",");
+                inventoryList.put(items[0],Integer.valueOf(items[1]));
+            }
+            br.close();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -140,7 +159,7 @@ public class MainActivity extends Activity {
             String msgReply = "Hello from Android, you are #" + cnt;
 
             try {
-                ObjectOutputStream oos = new ObjectOutputStream(hostThreadSocket.getOutputStream());;
+                ObjectOutputStream oos = new ObjectOutputStream(hostThreadSocket.getOutputStream());
                 if (!isOpen){
                     oos.writeObject("Closed Now!");
                     oos.flush();
@@ -226,6 +245,7 @@ public class MainActivity extends Activity {
                     ObjectInputStream ois = new ObjectInputStream(is);
                     Object object = ois.readObject();
                     Message message = (Message) object;
+                    // TODO decrease the amount of inventory
                     Map<String, Boolean> res = new HashMap<>();
                     if (InventoryListThread.isFullyAvailable(message)){
                         orderList.offer(message);
@@ -287,8 +307,12 @@ public class MainActivity extends Activity {
         }
         // TODO update from inventory.txt
         private void updateList() {
+            // load inventory file and check amount
+            // if less than 50, increase amount by xxxx
             for (FoodsEnum key : FoodsEnum.values()){
-                inventoryList.put(key.getName(), inventoryList.getOrDefault(key.getName(), 0) + 50);
+                inventoryList.put(key.getName(), inventoryList.get(key.getName()) + 50);
+
+                // update inventory file
             }
         }
 
