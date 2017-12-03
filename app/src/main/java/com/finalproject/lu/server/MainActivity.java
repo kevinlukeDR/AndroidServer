@@ -27,10 +27,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import android.os.Bundle;
-import android.app.Activity;
-import android.widget.TextView;
-
 public class MainActivity extends Activity {
 
     private final static Calendar date = Calendar.getInstance();
