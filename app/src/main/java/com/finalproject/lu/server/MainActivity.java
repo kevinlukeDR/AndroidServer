@@ -73,8 +73,8 @@ public class MainActivity extends Activity {
     }
 
     public void loadInventory(){
-        File infile= new File("C:/Users/komal/AndroidStudioProjects/AndroidServer/app/src/main/java/com/finalproject/lu/server/Inventory.txt");
-        File outfile= new File("C:/Users/komal/AndroidStudioProjects/AndroidServer/app/src/main/java/com/finalproject/lu/server/Inventory.txt");
+        File infile= new File("com/finalproject/lu/server/Inventory.txt");
+        File outfile= new File("com/finalproject/lu/server/Inventory.txt");
         String line="";
         try {
             BufferedReader br =new BufferedReader(new FileReader(infile));
@@ -255,15 +255,19 @@ public class MainActivity extends Activity {
                     Message message = (Message) object;
 
                     // TODO decrease the amount of inventoryList
-                    Map<String, Integer> foods = message.getOrder().getFoods();
-                    for (String item : foods.keySet()){
-                       inventoryList.put(item,(inventoryList.get(item)-foods.get(item)));
-                    }
+//                    Map<String, Integer> foods = message.getOrder().getFoods();
+//                    for (String item : foods.keySet()){
+//                       inventoryList.put(item,(inventoryList.get(item)-foods.get(item)));
+//                    }
 
                     Map<String, Boolean> res = new HashMap<>();
                     if (InventoryListThread.isFullyAvailable(message)){
                         orderList.offer(message);
                         Order order = message.getOrder();
+                        Map<String, Integer> foods = message.getOrder().getFoods();
+                        for (String item : foods.keySet()) {
+                            inventoryList.put(item, (inventoryList.get(item) - foods.get(item)));
+                        }
                         Message reply = new Message(order, new Nodification(Nodification.Status.RECEIVE.getStatus()), false, null);
                         oos.writeObject(reply);
                         oos.flush();
@@ -322,12 +326,12 @@ public class MainActivity extends Activity {
 
         // TODO update from inventory.txt
         private void updateList() {
-            File infile= new File("C:/Users/komal/AndroidStudioProjects/AndroidServer/app/src/main/java/com/finalproject/lu/server/Inventory.txt");
-            File outfile= new File("C:/Users/komal/AndroidStudioProjects/AndroidServer/app/src/main/java/com/finalproject/lu/server/Inventory.txt");
+            File infile= new File("com/finalproject/lu/server/Inventory.txt");
+            File outfile= new File("com/finalproject/lu/server/Inventory.txt");
             String line="";
             try {
-                BufferedReader br =new BufferedReader(new FileReader(infile));
-                BufferedWriter bw =new BufferedWriter(new FileWriter(outfile));
+                BufferedReader br = new BufferedReader(new FileReader(infile));
+                BufferedWriter bw = new BufferedWriter(new FileWriter(outfile));
                 while((line=br.readLine())!=null) {
                     String items[] = line.split(",");
                     inventoryList.put(items[0], inventoryList.get(items[0])+50);
