@@ -5,7 +5,7 @@ android {
     buildToolsVersion "27.0.0"
     defaultConfig {
         applicationId "com.finalproject.lu.server"
-        minSdkVersion 25
+        minSdkVersion 23
         targetSdkVersion 25
         jackOptions {
             enabled true

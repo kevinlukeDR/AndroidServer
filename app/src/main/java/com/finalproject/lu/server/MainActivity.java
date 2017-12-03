@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
     TextView info, infoip, msg;
     String message = "";
     ServerSocket serverSocket;
+    File infile= new File("Inventory.txt");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,14 +74,21 @@ public class MainActivity extends Activity {
     }
 
     public void loadInventory(){
-        File infile= new File("Inventory.txt");
+        File infile= new File("C:/Users/komal/AndroidStudioProjects/AndroidServer/app/src/main/java/com/finalproject/lu/server/Inventory.txt");
+        File outfile= new File("C:/Users/komal/AndroidStudioProjects/AndroidServer/app/src/main/java/com/finalproject/lu/server/Inventory.txt");
         String line="";
         try {
             BufferedReader br =new BufferedReader(new FileReader(infile));
-            while((line=br.readLine())!=null){
-                String items[]= line.split(",");
-                inventoryList.put(items[0],Integer.valueOf(items[1]));
+            BufferedWriter bw =new BufferedWriter(new FileWriter(outfile));
+            while((line=br.readLine())!=null) {
+                String items[] = line.split(",");
+                 inventoryList.put(items[0], 50);
+                 items[1]= String.valueOf(Integer.valueOf(items[1])-50);
+                bw.write((items[0])+","+ items[1]);
+                bw.newLine();
             }
+            bw.flush();
+            bw.close();
             br.close();
 
         } catch (FileNotFoundException e) {
@@ -185,6 +193,7 @@ public class MainActivity extends Activity {
                 message += "Something wrong! " + e.toString() + "\n";
             }
 
+
             MainActivity.this.runOnUiThread(new Runnable() {
 
                 @Override
@@ -245,7 +254,7 @@ public class MainActivity extends Activity {
                     ObjectInputStream ois = new ObjectInputStream(is);
                     Object object = ois.readObject();
                     Message message = (Message) object;
-                    // TODO decrease the amount of inventory
+                    // TODO decrease the amount of inventoryList
                     Map<String, Boolean> res = new HashMap<>();
                     if (InventoryListThread.isFullyAvailable(message)){
                         orderList.offer(message);
@@ -307,13 +316,41 @@ public class MainActivity extends Activity {
         }
         // TODO update from inventory.txt
         private void updateList() {
+         /*   File infile = new File("Inventory.txt");
+            String line="";
             // load inventory file and check amount
             // if less than 50, increase amount by xxxx
-            for (FoodsEnum key : FoodsEnum.values()){
-                inventoryList.put(key.getName(), inventoryList.get(key.getName()) + 50);
+            try {
+                BufferedReader br =new BufferedReader(new FileReader(infile));
+                while((line=br.readLine())!=null){
+                    String items[]= line.split(",");
+                    if(Integer.valueOf(items[1])>50) {
+                        //current inventoryList count +50
+                        inventoryList.put(items[0], 50);
+                    }
+                    else {
+                        // TODO Print message that stock not available
+                    }
 
-                // update inventory file
-            }
+                }
+                br.close();
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }*/
+           /* BufferedWriter bw = null;
+            try {
+                bw = new BufferedWriter(new FileWriter(infile));
+                while((line=br.readLine())!=null) {
+                    String items[] = line.split(",");
+                    bw.write(items[0]+ "," + String.valueOf(Integer.valueOf(items[1])-50));
+                }
+                bw.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }*/
         }
 
         // TODO find a way to make it synchronized
