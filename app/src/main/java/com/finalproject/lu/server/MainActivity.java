@@ -46,12 +46,13 @@ public class MainActivity extends Activity {
         msg = (TextView) findViewById(R.id.msg);
         infoip.setText(getIpAddress());
 
-
+        loadInventory();
         InventoryListThread inventoryListThread = new InventoryListThread();
         inventoryListThread.start();
 
         Thread socketServerThread = new Thread(new SocketServerThread());
         socketServerThread.start();
+
     }
 
     @Override
@@ -75,6 +76,31 @@ public class MainActivity extends Activity {
             }
         }
 
+    }
+
+    public void loadInventory(){
+        File infile= new File("com/finalproject/lu/server/Inventory.txt");
+        File outfile= new File("com/finalproject/lu/server/Inventory.txt");
+        String line="";
+        try {
+            BufferedReader br =new BufferedReader(new FileReader(infile));
+            BufferedWriter bw =new BufferedWriter(new FileWriter(outfile));
+            while((line=br.readLine())!=null) {
+                String items[] = line.split(",");
+                 inventoryList.put(items[0], 50);
+                 items[1]= String.valueOf(Integer.valueOf(items[1])-50);
+                bw.write((items[0])+","+ items[1]);
+                bw.newLine();
+            }
+            bw.flush();
+            bw.close();
+            br.close();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private class SocketServerThread extends Thread {
@@ -149,7 +175,7 @@ public class MainActivity extends Activity {
             String msgReply = "Hello from Android, you are #" + cnt;
 
             try {
-                ObjectOutputStream oos = new ObjectOutputStream(hostThreadSocket.getOutputStream());;
+                ObjectOutputStream oos = new ObjectOutputStream(hostThreadSocket.getOutputStream());
                 if (!isOpen){
                     oos.writeObject("Closed Now!");
                     oos.flush();
@@ -174,6 +200,7 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
                 message += "Something wrong! " + e.toString() + "\n";
             }
+
 
             MainActivity.this.runOnUiThread(new Runnable() {
 
@@ -236,10 +263,21 @@ public class MainActivity extends Activity {
                     ObjectInputStream ois = new ObjectInputStream(is);
                     Object object = ois.readObject();
                     Message message = (Message) object;
+
+                    // TODO decrease the amount of inventoryList
+//                    Map<String, Integer> foods = message.getOrder().getFoods();
+//                    for (String item : foods.keySet()){
+//                       inventoryList.put(item,(inventoryList.get(item)-foods.get(item)));
+//                    }
+
                     Map<String, Boolean> res = new HashMap<>();
                     if (InventoryListThread.isFullyAvailable(message)){
                         orderList.offer(message);
                         Order order = message.getOrder();
+                        Map<String, Integer> foods = message.getOrder().getFoods();
+                        for (String item : foods.keySet()) {
+                            inventoryList.put(item, (inventoryList.get(item) - foods.get(item)));
+                        }
                         Message reply = new Message(order, new Nodification(Nodification.Status.RECEIVE.getStatus()), false, null);
                         oos.writeObject(reply);
                         oos.flush();
@@ -287,18 +325,38 @@ public class MainActivity extends Activity {
         @Override
         public void run(){
             while (true){
-                updateList();
                 try {
                     Thread.sleep(86400);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+                updateList();
             }
         }
+
         // TODO update from inventory.txt
         private void updateList() {
-            for (FoodsEnum key : FoodsEnum.values()){
-                inventoryList.put(key.getName(), inventoryList.getOrDefault(key.getName(), 0) + 50);
+            File infile= new File("com/finalproject/lu/server/Inventory.txt");
+            File outfile= new File("com/finalproject/lu/server/Inventory.txt");
+            String line="";
+            try {
+                BufferedReader br = new BufferedReader(new FileReader(infile));
+                BufferedWriter bw = new BufferedWriter(new FileWriter(outfile));
+                while((line=br.readLine())!=null) {
+                    String items[] = line.split(",");
+                    inventoryList.put(items[0], inventoryList.get(items[0])+50);
+                    items[1]= String.valueOf(Integer.valueOf(items[1])-50);
+                    bw.write((items[0])+","+ items[1]);
+                    bw.newLine();
+                }
+                bw.flush();
+                bw.close();
+                br.close();
+
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 

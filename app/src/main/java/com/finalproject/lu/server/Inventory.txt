@@ -1,0 +1,4 @@
+Burgers,1000
+Chicken,1000
+FrenchFries,1000
+OnionRings,1000
