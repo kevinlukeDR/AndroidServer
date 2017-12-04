@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     TextView info, infoip, msg;
     String message = "";
     ServerSocket serverSocket;
+    ServerSocket replySocket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,17 +66,28 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
             }
         }
+        if (replySocket != null) {
+            try {
+                replySocket.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
+
     }
 
     private class SocketServerThread extends Thread {
 
-        static final int SocketServerPORT = 8080;
+        static final int SocketAPORT = 8080;
+        static final int SocketBPORT = 8081;
         int count = 0;
 
         @Override
         public void run() {
             try {
-                serverSocket = new ServerSocket(SocketServerPORT);
+                serverSocket = new ServerSocket(SocketAPORT);
+                replySocket = new ServerSocket(SocketBPORT);
                 MainActivity.this.runOnUiThread(new Runnable() {
 
                     @Override
@@ -87,7 +99,7 @@ public class MainActivity extends Activity {
                 ExecutorService replyPool = Executors.newCachedThreadPool();
                 ExecutorService listenPool = Executors.newCachedThreadPool();
                 while (true) {
-                    Socket socket = serverSocket.accept();
+                    Socket reply = replySocket.accept();
                     int currentHour = date.get(Calendar.HOUR_OF_DAY);
                     // TODO remove comment
 //                    if (currentHour > 19 || currentHour < 11){
@@ -96,8 +108,8 @@ public class MainActivity extends Activity {
 //                        continue;
 //                    }
                     count++;
-                    message += "#" + count + " from " + socket.getInetAddress()
-                            + ":" + socket.getPort() + "\n";
+                    message += "#" + count + " from " + reply.getInetAddress()
+                            + ":" + reply.getPort() + "\n";
 
                     MainActivity.this.runOnUiThread(new Runnable() {
 
@@ -108,8 +120,9 @@ public class MainActivity extends Activity {
                     });
 
                     replyPool.execute(new SocketServerReplyThread(
-                            socket, count, true));
-                    listenPool.execute(new SocketServerListenThread(socket, count));
+                            reply, count, true));
+                    Socket socket = serverSocket.accept();
+                    listenPool.execute(new SocketServerListenThread(socket, reply, count));
                     System.out.println("123");
                 }
             } catch (IOException e) {
@@ -204,11 +217,12 @@ public class MainActivity extends Activity {
     }
 
     private class SocketServerListenThread extends Thread {
-        private Socket socket;
+        private Socket socket, reply;
         int cnt;
         private String response;
-        SocketServerListenThread(Socket socket, int c) {
+        SocketServerListenThread(Socket socket, Socket reply, int c) {
             this.socket = socket;
+            this.reply = reply;
             cnt = c;
         }
 
@@ -216,7 +230,7 @@ public class MainActivity extends Activity {
         public void run() {
             while(true) {
                 try {
-                    ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());;
+                    ObjectOutputStream oos = new ObjectOutputStream(reply.getOutputStream());;
                     response = "";
                     InputStream is = socket.getInputStream();
                     ObjectInputStream ois = new ObjectInputStream(is);
