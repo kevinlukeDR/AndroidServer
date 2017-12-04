@@ -8,6 +8,10 @@ import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.widget.TextView;
+import com.finalproject.lu.server.StaticThreads.KitchenThread;
+import com.finalproject.lu.server.StaticThreads.MessageThread;
+import com.finalproject.lu.server.StaticThreads.PackagingThread;
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -31,6 +35,9 @@ public class MainActivity extends Activity {
     private final static Calendar date = Calendar.getInstance();
     private static ConcurrentLinkedQueue<Message> orderList = new ConcurrentLinkedQueue<>();
     private static ConcurrentHashMap<String, Integer> inventoryList = new ConcurrentHashMap<>();
+    private static ConcurrentLinkedQueue<Message> packetList = new ConcurrentLinkedQueue<>();
+    private static ConcurrentLinkedQueue<Message> deliveryList = new ConcurrentLinkedQueue<>();
+    private static ConcurrentLinkedQueue<Object> messages = new ConcurrentLinkedQueue<>();
     TextView info, infoip, msg;
     String message = "";
     ServerSocket serverSocket;
@@ -46,9 +53,14 @@ public class MainActivity extends Activity {
         infoip.setText(getIpAddress());
 
         loadInventory();
-        InventoryListThread inventoryListThread = new InventoryListThread();
-        inventoryListThread.start();
-
+//        InventoryListThread inventoryListThread = new InventoryListThread();
+//        inventoryListThread.start();
+        PackagingThread packagingThread = new PackagingThread(packetList, deliveryList, messages);
+        KitchenThread kitchenThread = new KitchenThread(orderList, packetList, messages);
+        MessageThread messageThread = new MessageThread(messages);
+        messageThread.start();
+        kitchenThread.start();
+        packagingThread.start();
         Thread socketServerThread = new Thread(new SocketServerThread());
         socketServerThread.start();
 
@@ -79,27 +91,31 @@ public class MainActivity extends Activity {
 
     public void loadInventory(){
         // TODO cannot open file
-        File infile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
-        File outfile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
-        String line="";
-        try {
-            BufferedReader br =new BufferedReader(new FileReader(infile));
-            BufferedWriter bw =new BufferedWriter(new FileWriter(outfile));
-            while((line=br.readLine())!=null) {
-                String items[] = line.split(",");
-                 inventoryList.put(items[0], 50);
-                 items[1]= String.valueOf(Integer.valueOf(items[1])-50);
-                bw.write((items[0])+","+ items[1]);
-                bw.newLine();
-            }
-            bw.flush();
-            bw.close();
-            br.close();
+//        File infile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
+//        File outfile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
+//        String line="";
+//        try {
+//            BufferedReader br =new BufferedReader(new FileReader(infile));
+//            BufferedWriter bw =new BufferedWriter(new FileWriter(outfile));
+//            while((line=br.readLine())!=null) {
+//                String items[] = line.split(",");
+//                 inventoryList.put(items[0], 50);
+//                 items[1]= String.valueOf(Integer.valueOf(items[1])-50);
+//                bw.write((items[0])+","+ items[1]);
+//                bw.newLine();
+//            }
+//            bw.flush();
+//            bw.close();
+//            br.close();
+//
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        for (FoodsEnum food : FoodsEnum.values()){
+            inventoryList.put(food.getName(), 5);
         }
     }
 
@@ -133,6 +149,7 @@ public class MainActivity extends Activity {
 //                                socket, count, false));
 //                        continue;
 //                    }
+                    MessageThread.setSocket(reply);
                     count++;
                     message += "#" + count + " from " + reply.getInetAddress()
                             + ":" + reply.getPort() + "\n";
@@ -147,6 +164,8 @@ public class MainActivity extends Activity {
 
                     replyPool.execute(new SocketServerReplyThread(
                             reply, count, true));
+                    PackagingThread.setSocket(reply);
+                    KitchenThread.setSocket(reply);
                     Socket socket = serverSocket.accept();
                     listenPool.execute(new SocketServerListenThread(socket, reply, count));
                     System.out.println("123");
@@ -174,32 +193,24 @@ public class MainActivity extends Activity {
             OutputStream outputStream;
             String msgReply = "Hello from Android, you are #" + cnt;
 
-            try {
-                ObjectOutputStream oos = new ObjectOutputStream(hostThreadSocket.getOutputStream());
-                if (!isOpen){
-                    oos.writeObject("Closed Now!");
-                    oos.flush();
-                    oos.close();
-                }
-                else {
-                    oos.writeObject(cnt);
-                    oos.flush();
 
-                    message += "replayed: " + msgReply + "\n";
+            if (!isOpen) {
+                messages.offer("Closed now!");
+            } else {
+                messages.offer(cnt);
 
-                    MainActivity.this.runOnUiThread(new Runnable() {
+                message += "replayed: " + msgReply + "\n";
 
-                        @Override
-                        public void run() {
-                            msg.setText(message);
-                        }
-                    });
-                }
+                MainActivity.this.runOnUiThread(new Runnable() {
 
-            } catch (IOException e) {
-                e.printStackTrace();
-                message += "Something wrong! " + e.toString() + "\n";
+                    @Override
+                    public void run() {
+                        msg.setText(message);
+                    }
+                });
             }
+
+
 
 
             MainActivity.this.runOnUiThread(new Runnable() {
@@ -257,7 +268,6 @@ public class MainActivity extends Activity {
         public void run() {
             while(true) {
                 try {
-                    ObjectOutputStream oos = new ObjectOutputStream(reply.getOutputStream());;
                     response = "";
                     InputStream is = socket.getInputStream();
                     ObjectInputStream ois = new ObjectInputStream(is);
@@ -271,7 +281,7 @@ public class MainActivity extends Activity {
 //                    }
 
                     Map<String, Boolean> res = new HashMap<>();
-                    if (InventoryListThread.isFullyAvailable(message)){
+                    if (isFullyAvailable(message)){
                         orderList.offer(message);
                         Order order = message.getOrder();
                         Map<String, Integer> foods = message.getOrder().getFoods();
@@ -279,21 +289,17 @@ public class MainActivity extends Activity {
                             inventoryList.put(item, (inventoryList.get(item) - foods.get(item)));
                         }
                         Message reply = new Message(order, new Nodification(Nodification.Status.RECEIVE.getStatus()), false, null);
-                        oos.writeObject(reply);
-                        oos.flush();
+                        messages.offer(reply);
                     }
-                    else if ((res = InventoryListThread.isPartialAvailable(message)) != null){
+                    else if ((res = isPartialAvailable(message)) != null){
                         Order order = message.getOrder();
-                        // TODO handle partial order
                         Message reply = new Message(order, new Nodification(Nodification.Status.PARTIAL.getStatus()), false, res);
-                        oos.writeObject(reply);
-                        oos.flush();
+                        messages.offer(reply);
                     }
                     else {
                         Order order = message.getOrder();
                         Message reply = new Message(order, new Nodification(Nodification.Status.NOTAVAILABLE.getStatus()), false, null);
-                        oos.writeObject(reply);
-                        oos.flush();
+                        messages.offer(reply);
                     }
                     response = message.getNodification().getNodification();
 
@@ -359,29 +365,28 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
             }
         }
-
-        // TODO find a way to make it synchronized
-        private static boolean isFullyAvailable(Message message) {
-            Map<String, Integer> foods = message.getOrder().getFoods();
-            for (String item : foods.keySet()){
-                if (foods.get(item) > inventoryList.get(item)){
-                    return false;
-                }
+    }
+    // TODO find a way to make it synchronized
+    private static boolean isFullyAvailable(Message message) {
+        Map<String, Integer> foods = message.getOrder().getFoods();
+        for (String item : foods.keySet()){
+            if (foods.get(item) > inventoryList.get(item)){
+                return false;
             }
-            return true;
         }
+        return true;
+    }
 
-        public static Map<String, Boolean> isPartialAvailable(Message message) {
-            Map<String, Integer> foods = message.getOrder().getFoods();
-            Map<String, Boolean> res = new HashMap<>();
-            int count = 0;
-            for (String item : foods.keySet()){
-                if (foods.get(item) <= inventoryList.get(item)){
-                    res.put(item, true);
-                    count++;
-                }
+    public static Map<String, Boolean> isPartialAvailable(Message message) {
+        Map<String, Integer> foods = message.getOrder().getFoods();
+        Map<String, Boolean> res = new HashMap<>();
+        int count = 0;
+        for (String item : foods.keySet()){
+            if (foods.get(item) <= inventoryList.get(item)){
+                res.put(item, true);
+                count++;
             }
-            return count == 0 ? null : res;
         }
+        return count == 0 ? null : res;
     }
 }

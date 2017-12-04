@@ -17,7 +17,7 @@ public class PackagingThread extends Thread {
     private static ConcurrentLinkedQueue<Message> packageList;
     private static Socket socket = null;
     private static ConcurrentLinkedQueue<Message> deliveryList;
-
+    private static ConcurrentLinkedQueue<Object> messages;
     public static Socket getSocket() {
         return socket;
     }
@@ -26,9 +26,11 @@ public class PackagingThread extends Thread {
         PackagingThread.socket = socket;
     }
 
-    public PackagingThread(ConcurrentLinkedQueue<Message> packageList, ConcurrentLinkedQueue<Message> deliveryList){
+    public PackagingThread(ConcurrentLinkedQueue<Message> packageList, ConcurrentLinkedQueue<Message> deliveryList,
+                           ConcurrentLinkedQueue<Object> messages){
         this.packageList = packageList;
         this.deliveryList = deliveryList;
+        this.messages = messages;
     }
 
     @Override
@@ -42,15 +44,12 @@ public class PackagingThread extends Thread {
             try {
                 Message msg  = packageList.poll();
                 msg.getNodification().setNodification(Nodification.Status.PACKAGE.getStatus());
-                ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());;
-                oos.writeObject(msg);
-                oos.flush();
+                messages.offer(msg);
                 sleep(sleepTime);
-                deliveryList.offer(msg);
+                msg.getNodification().setNodification(Nodification.Status.DELIVERY.getStatus());
+                messages.offer(msg);
 
             } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
                 e.printStackTrace();
             }
         }

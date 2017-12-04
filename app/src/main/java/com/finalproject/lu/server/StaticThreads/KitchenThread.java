@@ -25,7 +25,7 @@ public class KitchenThread extends Thread {
     private static ConcurrentLinkedQueue<Message> orderList;
     private static Socket socket = null;
     private static ConcurrentLinkedQueue<Message> packageList;
-
+    private static ConcurrentLinkedQueue<Object> messages;
     public static Socket getSocket() {
         return socket;
     }
@@ -34,9 +34,11 @@ public class KitchenThread extends Thread {
         KitchenThread.socket = socket;
     }
 
-    public KitchenThread(ConcurrentLinkedQueue<Message> orderList, ConcurrentLinkedQueue<Message> packageList){
+    public KitchenThread(ConcurrentLinkedQueue<Message> orderList, ConcurrentLinkedQueue<Message> packageList,
+                         ConcurrentLinkedQueue<Object> messages){
         this.packageList = packageList;
         this.orderList = orderList;
+        this.messages = messages;
     }
 
     @Override
@@ -50,15 +52,11 @@ public class KitchenThread extends Thread {
             try {
                 Message msg  = orderList.poll();
                 msg.getNodification().setNodification(Nodification.Status.PREPARE.getStatus());
-                ObjectOutputStream oos = new ObjectOutputStream(socket.getOutputStream());;
-                oos.writeObject(msg);
-                oos.flush();
+                messages.offer(msg);
                 sleep(sleepTime);
                 packageList.offer(msg);
 
             } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
