@@ -8,7 +8,6 @@ import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.widget.TextView;
-
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -79,8 +78,9 @@ public class MainActivity extends Activity {
     }
 
     public void loadInventory(){
-        File infile= new File("com/finalproject/lu/server/Inventory.txt");
-        File outfile= new File("com/finalproject/lu/server/Inventory.txt");
+        // TODO cannot open file
+        File infile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
+        File outfile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
         String line="";
         try {
             BufferedReader br =new BufferedReader(new FileReader(infile));
