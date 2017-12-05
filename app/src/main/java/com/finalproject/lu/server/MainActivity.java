@@ -280,9 +280,8 @@ public class MainActivity extends Activity {
 //                       inventoryList.put(item,(inventoryList.get(item)-foods.get(item)));
 //                    }
 
-                    Map<String, Boolean> res = new HashMap<>();
+                    Map<String, Integer> res = new HashMap<>();
                     if (isFullyAvailable(message)){
-                        orderList.offer(message);
                         Order order = message.getOrder();
                         Map<String, Integer> foods = message.getOrder().getFoods();
                         for (String item : foods.keySet()) {
@@ -290,6 +289,7 @@ public class MainActivity extends Activity {
                         }
                         Message reply = new Message(order, new Nodification(Nodification.Status.RECEIVE.getStatus()), false, null);
                         messages.offer(reply);
+                        orderList.offer(message);
                     }
                     else if ((res = isPartialAvailable(message)) != null){
                         Order order = message.getOrder();
@@ -377,13 +377,13 @@ public class MainActivity extends Activity {
         return true;
     }
 
-    public static Map<String, Boolean> isPartialAvailable(Message message) {
+    public static Map<String, Integer> isPartialAvailable(Message message) {
         Map<String, Integer> foods = message.getOrder().getFoods();
-        Map<String, Boolean> res = new HashMap<>();
+        Map<String, Integer> res = new HashMap<>();
         int count = 0;
         for (String item : foods.keySet()){
             if (foods.get(item) <= inventoryList.get(item)){
-                res.put(item, true);
+                res.put(item, foods.get(item));
                 count++;
             }
         }
