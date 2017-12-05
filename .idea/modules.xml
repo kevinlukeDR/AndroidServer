@@ -3,7 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/AndroidServer.iml" filepath="$PROJECT_DIR$/AndroidServer.iml" />
-      <module fileurl="file://$PROJECT_DIR$/Server.iml" filepath="$PROJECT_DIR$/Server.iml" />
+      <module fileurl="file://C:\Users\hp\AndroidStudioProjects\OopsProject\AndroidServer\Server.iml" filepath="C:\Users\hp\AndroidStudioProjects\OopsProject\AndroidServer\Server.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

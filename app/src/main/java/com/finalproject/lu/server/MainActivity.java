@@ -4,9 +4,15 @@ import POJO.FoodsEnum;
 import POJO.Message;
 import POJO.Nodification;
 import POJO.Order;
+
+import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
 import android.widget.TextView;
 import java.io.*;
 import java.net.*;
@@ -35,6 +41,14 @@ public class MainActivity extends Activity {
     String message = "";
     ServerSocket serverSocket;
     ServerSocket replySocket;
+    String resourceName = "inventory.txt";
+    String pathSDCard = Environment.getExternalStorageDirectory() + "/Android/data/" + resourceName;
+
+    private static final int REQUEST_EXTERNAL_STORAGE = 1;
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,14 +58,29 @@ public class MainActivity extends Activity {
         infoip = (TextView) findViewById(R.id.infoip);
         msg = (TextView) findViewById(R.id.msg);
         infoip.setText(getIpAddress());
-
+        //verifyStoragePermissions(this);
         loadInventory();
+        //loadData();
         InventoryListThread inventoryListThread = new InventoryListThread();
         inventoryListThread.start();
 
         Thread socketServerThread = new Thread(new SocketServerThread());
         socketServerThread.start();
 
+    }
+
+    public static void verifyStoragePermissions(Activity activity) {
+        // Check if we have write permission
+        int permission = ActivityCompat.checkSelfPermission(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+
+        if (permission != PackageManager.PERMISSION_GRANTED) {
+            // We don't have permission so prompt the user
+            ActivityCompat.requestPermissions(
+                    activity,
+                    PERMISSIONS_STORAGE,
+                    REQUEST_EXTERNAL_STORAGE
+            );
+        }
     }
 
     @Override
@@ -78,30 +107,98 @@ public class MainActivity extends Activity {
     }
 
     public void loadInventory(){
-        // TODO cannot open file
-        File infile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
-        File outfile= new File("D:\\Workspace\\AndroidServer\\app\\src\\main\\java\\com\\finalproject\\lu\\server\\Inventory.txt");
-        String line="";
+
+//String path ="/sdcard/ip.txt";
+
+        System.out.println(pathSDCard);
+
+//Get the text file
+
+
+//Read text from file
+  //      StringBuilder text = new StringBuilder();
+
         try {
-            BufferedReader br =new BufferedReader(new FileReader(infile));
-            BufferedWriter bw =new BufferedWriter(new FileWriter(outfile));
-            while((line=br.readLine())!=null) {
+            System.out.println("in read");
+            InputStream inputStream = getResources().openRawResource(R.raw.inventory);
+            ///*R.raw.inve*/getResources().getIdentifier("inventory", "raw",getPackageName()));
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+            String line="";
+
+            File file=new File(pathSDCard);
+            OutputStream stream=new FileOutputStream(file);
+            OutputStreamWriter os=new OutputStreamWriter(stream);
+            BufferedWriter ou=new BufferedWriter(os);
+
+            while ((line = br.readLine()) != null) {
                 String items[] = line.split(",");
-                 inventoryList.put(items[0], 50);
-                 items[1]= String.valueOf(Integer.valueOf(items[1])-50);
-                bw.write((items[0])+","+ items[1]);
-                bw.newLine();
+
+                //System.out.println(line);
+                inventoryList.put(items[0], 50);
+               items[1]= String.valueOf(Integer.valueOf(items[1])-50);
+                ou.write(items[0] +"," + items[1]);
+                ou.newLine();
+                //System.out.println(items[0]);
+                //System.out.println(line);
             }
-            bw.flush();
-            bw.close();
+            ou.flush();
+            stream.close();
             br.close();
 
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+
+            //Read the values from the internal storage file
+            InputStream fileInputStream=new FileInputStream(file);
+            InputStreamReader is=new InputStreamReader(fileInputStream);
+            BufferedReader in=new BufferedReader(is);
+            String readLine="";
+            while((readLine= in.readLine()) != null){
+                System.out.println("Reading File" + readLine);
+            }
+            //End Reading
+
+        }
+        catch (IOException e) {
+           e.printStackTrace(); //You'll need to add proper error handling here
+        }
+//
+//        for(FoodsEnum foods : FoodsEnum.values()){
+//            inventoryList.put(foods.getName(),5);
+//        }
+    }
+
+    public void loadData(){
+        System.out.println("inside function");
+        String path = "inventory.txt";
+        String line = "";
+        // StringBuilder text = new StringBuilder();
+        InputStream stream = getResources().openRawResource(R.raw.inventory);
+        String pathSDCard = Environment.getExternalStorageDirectory() + "/data/" + path;
+        InputStreamReader is = new InputStreamReader(stream);
+        // FileOutputStream out =  new FileOutputStream(pathSDCard);
+
+
+        try {
+            OutputStream outstream=new FileOutputStream(pathSDCard);
+            OutputStreamWriter os=new OutputStreamWriter(outstream);
+            BufferedWriter bw=new BufferedWriter(os);
+            BufferedReader br = new BufferedReader(is);
+
+            System.out.println("in read");
+            while ((line = br.readLine()) != null) {
+                String items[] = line.split(",");
+                System.out.println(line);
+                inventoryList.put(items[0], 50);
+                System.out.println(items[0]+ "," +items[1]);
+                bw.write(items[0]+","+ items[1]);
+            }
+            bw.flush();
+            os.close();
+            br.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
 
     private class SocketServerThread extends Thread {
 
@@ -265,10 +362,7 @@ public class MainActivity extends Activity {
                     Message message = (Message) object;
 
                     // TODO decrease the amount of inventoryList
-//                    Map<String, Integer> foods = message.getOrder().getFoods();
-//                    for (String item : foods.keySet()){
-//                       inventoryList.put(item,(inventoryList.get(item)-foods.get(item)));
-//                    }
+
 
                     Map<String, Boolean> res = new HashMap<>();
                     if (InventoryListThread.isFullyAvailable(message)){
@@ -326,38 +420,59 @@ public class MainActivity extends Activity {
         public void run(){
             while (true){
                 try {
+                    updateList();
                     Thread.sleep(86400);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-                updateList();
+
             }
         }
 
         // TODO update from inventory.txt
         private void updateList() {
-            File infile= new File("com/finalproject/lu/server/Inventory.txt");
-            File outfile= new File("com/finalproject/lu/server/Inventory.txt");
-            String line="";
-            try {
-                BufferedReader br = new BufferedReader(new FileReader(infile));
-                BufferedWriter bw = new BufferedWriter(new FileWriter(outfile));
-                while((line=br.readLine())!=null) {
-                    String items[] = line.split(",");
-                    inventoryList.put(items[0], inventoryList.get(items[0])+50);
-                    items[1]= String.valueOf(Integer.valueOf(items[1])-50);
-                    bw.write((items[0])+","+ items[1]);
-                    bw.newLine();
-                }
-                bw.flush();
-                bw.close();
-                br.close();
+            String resourceName = "inventory.txt";
 
+            ///*R.raw.inve*/getResources().getIdentifier("inventory", "raw",getPackageName()));
+
+            String line="";
+            String pathSDCard = Environment.getExternalStorageDirectory() + "/Android/data/" + resourceName;
+            File file=new File(pathSDCard);
+            Map<String, Integer> temp = new ConcurrentHashMap<>();
+            InputStream fileInputStream= null;
+            try {
+                fileInputStream = new FileInputStream(file);
+                InputStreamReader is=new InputStreamReader(fileInputStream);
+                BufferedReader in=new BufferedReader(is);
+                String readLine="";
+                while((readLine= in.readLine()) != null){
+                    String items[] = readLine.split(",");
+                    int inVal = inventoryList.get(items[0]);
+                    inventoryList.put(items[0], inVal + 50);
+                    items[1]= String.valueOf(Integer.valueOf(items[1])-50);
+                    temp.put(items[0], Integer.valueOf(items[1]));
+                }
+                in.close();
+                is.close();
+                //Write the File to Internal Storage
+
+                OutputStream stream=new FileOutputStream(file, false);
+                OutputStreamWriter os=new OutputStreamWriter(stream);
+                BufferedWriter ou=new BufferedWriter(os);
+
+                for(String item : temp.keySet()){
+                    ou.write(item + "," + temp.get(item));
+                    ou.newLine();
+                }
+                ou.flush();
+                os.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+
         }
 
         // TODO find a way to make it synchronized
