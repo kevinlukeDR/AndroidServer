@@ -146,7 +146,7 @@ public class MainActivity extends Activity {
                 String items[] = line.split(",");
 
                 //System.out.println(line);
-                inventoryList.put(items[0], 50);
+                inventoryList.put(items[0], 5);
                items[1]= String.valueOf(Integer.valueOf(items[1])-50);
                 ou.write(items[0] +"," + items[1]);
                 ou.newLine();
@@ -238,7 +238,7 @@ public class MainActivity extends Activity {
                     MessageThread.setSocket(reply);
                     int currentHour = date.get(Calendar.HOUR_OF_DAY);
                     // TODO remove comment
-                    if (currentHour >= 19 || currentHour < 11){
+                    if (currentHour >= 24 || currentHour < 10){
                         replyPool.execute(new SocketServerReplyThread(
                                 reply, count, false));
                         continue;
